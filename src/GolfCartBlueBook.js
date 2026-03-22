@@ -92,38 +92,30 @@ function calculateValue(formData) {
   const seatAdj = formData.seats === "6" ? 800 : formData.seats === "2" ? -400 : 0;
 
   // Fair market value = what it's worth in a fair private transaction
-  // This is the "retail ready" value — what a reconditioned version sells for,
-  // minus the cost of whatever work it needs
   let fairValue = brand.base * depreciation * condMult + batteryAdj - issueDeductions + seatAdj;
   fairValue = Math.max(fairValue, 500);
   fairValue = Math.round(fairValue / 50) * 50;
 
   // Private sale — realistic FB Marketplace / Craigslist price
-  // Slightly below fair market — buyers negotiate, carts sit if overpriced
   const privateSale = Math.round((fairValue * 0.85) / 50) * 50;
 
   // Trade-in — tight range $500-2,000, reflects real dealer economics
-  // Customer-facing: dealers invest $3,000-4,000+ reconditioning before resale
   let tradeIn;
   if (brand.avoidTrade) {
     tradeIn = 0;
   } else {
-    // Reconditioning estimate (customer-facing costs, not dealer cost)
     const reconditioningEst =
       (batteryAdj < -400 ? 2000 : batteryAdj < 0 ? 800 : 200) +
       issueDeductions * 1.5 +
-      500; // inspection, detail, misc
+      500;
 
-    // What a dealer could resell this cart for after reconditioning
     const dealerResale = brand.base * depreciation * 0.88 + seatAdj;
 
-    // Dealer needs healthy margin on used — tight market
     const dealerMinProfit = 2000;
     tradeIn = Math.max(dealerResale - reconditioningEst - dealerMinProfit, 500);
-    tradeIn = Math.min(tradeIn, 2000); // hard cap — never above $2,000
+    tradeIn = Math.min(tradeIn, 2000);
     tradeIn = Math.round(tradeIn / 50) * 50;
 
-    // Additional caps for rough situations
     if (formData.condition === "poor") tradeIn = Math.min(tradeIn, 600);
     if (age > 12) tradeIn = Math.min(tradeIn, 1250);
     if (age > 15) tradeIn = Math.min(tradeIn, 1000);
@@ -572,6 +564,59 @@ export default function GolfCartBlueBook() {
                 </div>
               </div>
             )}
+
+            <button
+              onClick={() => {
+                const subject = `Cart Value Report: ${formData.year} ${formData.brand}`;
+                const body = [
+                  `CART VALUE REPORT`,
+                  `─────────────────────────`,
+                  ``,
+                  `${formData.year} ${formData.brand}`,
+                  `Condition: ${formData.condition.charAt(0).toUpperCase() + formData.condition.slice(1)}`,
+                  `Seating: ${formData.seats} Passenger`,
+                  `Battery Status: ${
+                    formData.batteries === "new_lithium" ? "Lithium (New/Recent)" :
+                    formData.batteries === "new_lead" ? "Lead Acid (Replaced recently)" :
+                    formData.batteries === "good" ? "Lead Acid (1-2 yrs, good)" :
+                    formData.batteries === "aging" ? "Lead Acid (3-4 yrs, aging)" :
+                    formData.batteries === "bad" ? "Lead Acid (Needs replacement)" :
+                    "Unknown"
+                  }`,
+                  formData.issues.length > 0 ? `Known Issues: ${formData.issues.join(", ")}` : ``,
+                  ``,
+                  `─────────────────────────`,
+                  `ESTIMATED VALUES`,
+                  `─────────────────────────`,
+                  ``,
+                  `Fair Market Value:  $${result.fairValue.toLocaleString()}`,
+                  `Good Private Sale:  $${result.privateSale.toLocaleString()}`,
+                  result.avoidTrade
+                    ? `Dealer Trade-In:    N/A (limited dealer demand for this brand)`
+                    : `Dealer Trade-In:    $${result.tradeIn.toLocaleString()}`,
+                  ``,
+                  `─────────────────────────`,
+                  ``,
+                  `Note: Values are estimates based on NW Florida market data.`,
+                  `Actual prices may vary based on local demand and cart history.`,
+                  ``,
+                  `Powered by Cart Value — Golf Cart Blue Book`,
+                ].filter(Boolean).join("\n");
+                window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+              }}
+              style={{
+                width: "100%", padding: "14px", fontSize: 15, fontWeight: 700,
+                fontFamily: "'DM Sans', sans-serif",
+                border: "none", borderRadius: 12,
+                background: "linear-gradient(135deg, #2a5a7a, #1a3a5a)",
+                color: "#fff", cursor: "pointer",
+                opacity: showResults ? 1 : 0, transition: "opacity 0.5s ease 0.75s",
+                boxShadow: "0 4px 20px #2a5a7a30",
+                marginBottom: 10,
+              }}
+            >
+              Email This Report
+            </button>
 
             <button
               onClick={handleReset}
